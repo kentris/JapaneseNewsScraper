@@ -7,18 +7,10 @@
 import urllib.request, re, sqlite3, datetime, traceback, logging, time, os
 import JapaneseNewsScraperParser as parser, JapaneseNewsScraperValidation as valid
 from JapaneseNewsArticle import newsArticle
-# from JapaneseNewsScraperConstants import *
 import JapaneseNewsScraperConstants as constants 
 from datetime import date, datetime
 from bs4 import BeautifulSoup
 
-# Dictionaries for our various functions based on the news source
-# PARSE_PUBDATE = {NHK_SOURCE: parser.parseNhkPubDate, ASAHI_SOURCE: parser.parseAsahiPubDate}
-# GET_NEWS_ARTICLE_BODY = {NHK_SOURCE: parser.getNhkNewsArticleBody, ASAHI_SOURCE: parser.getAsahiNewsArticleBody}
-# GET_IMG_URL = {NHK_SOURCE: parser.getNhkImgUrl, ASAHI_SOURCE: parser.getAsahiImgUrl}
-# GET_RSS_ARTICLES = {NHK_SOURCE: parser.getNhkRssArticles, ASAHI_SOURCE: parser.getAsahiRssArticles}
-
-#** Contains reference to CONSTANTs		
 def scrapeNews():
 	""" Main function of the JapaneseNewsScraper. 
 
@@ -29,7 +21,6 @@ def scrapeNews():
 	processNewsArticles(conn, db, newsArticles)
 	closeDbConnection(db)
 
-#** Contains reference to CONSTANTs
 def startLogger():
 	"""	Starts the logging of the JapaneseNewsScraper. 
 
@@ -110,7 +101,6 @@ def processPageArticles(db, articles, genre, source):
 			newsArticles.append( updatePageArticle(article, genre, source) )
 	return newsArticles
 
-#** Contains reference to CONSTANTS
 def notInDatabase(article, db):
 	""" Checks for the existence of current News Article in the database. 	"""
 	db.execute(constants.CHECK_FOR_ARTICLE, article.getCheckTuple())
@@ -147,8 +137,6 @@ def processNewsArticle(conn, db, newsArticle, successHits, failureHits, totalPro
 			db.execute(constants.INSERT_ARTICLE, newsArticle.getInsertTuple())
 			conn.commit()
 			successHits += 1
-	# Need to update logging; cannot store Japanese characters at the moment.
-	# Try just putting in the URL for now?
 	except sqlite3.IntegrityError:
 		logging.debug("Article already exists in database.")
 		print("Article already exists in database: "+ str(newsArticle))
@@ -169,7 +157,6 @@ def getNewsArticleBody(newsArticle):
 	page = getUrlPage(newsArticle.getUrl())
 	body = ""
 	retrieveNewsArticleBody = getattr(parser, "get" + newsArticle.getSource().title() + "NewsArticleBody")
-	# body = GET_NEWS_ARTICLE_BODY[newsArticle.getSource()](page)
 	body = retrieveNewsArticleBody(page)
 	return body	
 	
