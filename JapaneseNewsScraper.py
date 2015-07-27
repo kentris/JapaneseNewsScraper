@@ -62,9 +62,8 @@ def getNewNewsArticles(db, url, genre, source):
 	""" Retrieves all New News Articles for the specified News Source URL.
 	
 	Using the provided URL, Genre, and Source, a list of new News Articles is retrieved.  Copies in the database are removed by checking against the database. This is to remove excessive page requests to the website. """
-
-	logging.debug("Entering getNewNewsArticles(). Retrieving Source: " + source + ", URL: " + url + " articles...")
-	print("Retrieving Source: " + source + ", URL: " + url + " articles...")
+	logging.debug("Entering getNewNewsArticles(). Retrieving Source: " + source + ", Genre: " + genre + " articles...")
+	print("Retrieving Source: " + source + ", Genre: " + genre + " articles...")
 	page = getUrlPage(url)		
 	articles = getPageArticles(page, source)
 	newsArticles = processPageArticles(db, articles, genre, source)
@@ -87,10 +86,8 @@ def getUrlPage(url):
 
 def getPageArticles(page, source):
 	""" Returns list of articles from specified source and RSS feed. """
-	items = page.findAll('item') # <- This might need abstracted for websites other than Asahi and NHK
 	getRssArticles = getattr(parser, "get" + source.title() + "RssArticles")
-	# articles = GET_RSS_ARTICLES[source](items)
-	articles = getRssArticles(items)
+	articles = getRssArticles(page)
 	return articles
 
 def processPageArticles(db, articles, genre, source):

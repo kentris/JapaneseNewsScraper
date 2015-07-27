@@ -26,6 +26,15 @@ def getNhkNewsArticleBody(page):
 	body = body.replace("<br />", "")
 	return body
 
+def getYomiuriNewsArticleBody(page):
+	""" Processes and returns the Nhk News Article Body from the provided News Article page source. """
+	body = ""
+	articleBodies = page.findAll('p', {'itemprop':'articleBody'})
+	for articleBody in articleBodies:
+		if articleBody.contents:
+			body += articleBody.contents[0]
+	return body
+
 def getAsahiImgUrl(pageText, article):
 	imgUrl = ""
 	newsImageMatch = re.findall(constants.ASAHI_IMAGE_URL_REGEXP, pageText)
@@ -42,7 +51,52 @@ def getNhkImgUrl(pageText, article):
 		if not imgUrlExt[0:4] == "http":
 			imgUrl = baseUrl + '/' + imgUrlExt
 	return imgUrl
-	
+
+def getAsahiRssArticles(page):
+	""" Processes the Asahi RSS Page Source into a list of Titles, PubDatetimes, and URLs.
+	A list of News Articles is then formed from the list of News Article information.  """
+	items = page.findAll('item')
+	titlePubdateUrl = getAsahiPageArticleTitlePubdateUrl(items)
+	articles = [ newsArticle(title, pubdate, url) \
+		for (title, pubdate, url) in titlePubdateUrl ]
+	return articles
+
+def getNhkRssArticles(page):
+	""" Processes the NHK RSS Page Source into a list of Titles, PubDatetimes, and URLs.
+	A list of News Articles is then formed from the list of News Article information.  """
+	items = page.findAll('item')
+	titlePubdateUrl = getNhkPageArticleTitlePubdateUrl(items)
+	articles = [ newsArticle(title, pubdate, url) \
+		for (title, pubdate, url) in titlePubdateUrl ]
+	return articles	
+
+def getYomiuriRssArticles(page):
+	""" Processes the Yomiuri RSS Page Source into a list of Titles, PubDatetimes, and URLs.
+	A list of News Articles is then formed from the list of News Article information.  """
+	unorderedList = page.findAll('ul', {'class':'list-common'})
+	items = []
+	if unorderedList:
+		items = unorderedList[0].findAll('li')
+	titlePubdateUrl = getYomiuriPageArticleTitlePubdateUrl(items)
+	articles = [ newsArticle(title, pubdate, url) \
+		for (title, pubdate, url) in titlePubdateUrl ]
+	return articles	
+
+def getAsahiPageArticleTitlePubdateUrl(items):
+	""" Processes the Asahi RSS Page Source list of items into a list of  Titles, PubDatetimes, and URLs for each Asahi News Article. """
+	titlePubdateUrl = [ ( (item.find('title').contents[0]), parseAsahiPubDate(item.find('dc:date').contents[0]), (item.find('link').contents[0]) ) for item in items if( (item.find('title') is not None) and (item.find('link') is not None) and (item.find('dc:date') is not None) ) ]
+	return titlePubdateUrl
+
+def getNhkPageArticleTitlePubdateUrl(items):
+	""" Processes the NHK RSS Page Source list of items into a list of  Titles, PubDatetimes, and URLs for each NHK News Article. """
+	titlePubdateUrl = [ ( (item.find('title').contents[0]), parseNhkPubDate(item.find('pubdate').contents[0]), (item.find('guid').contents[0]) ) for item in items if( (item.find('title') is not None) and (item.find('guid') is not None) and (item.find('pubdate') is not None) ) ]
+	return titlePubdateUrl
+
+def getYomiuriPageArticleTitlePubdateUrl(items):
+	""" Processes the Yomiuri RSS Page Source list of items into a list of  Titles, PubDatetimes, and URLs for each Yomiuri News Article. """
+	titlePubdateUrl = [ ( (item.find('span', {'class':'headline'}).contents[0]), parseYomiuriPubDate(item.find('span', {'class':'update'}).contents[0]), (item.find('a')['href']) ) for item in items if( (item.find('span', {'class':'headline'}) is not None) and (item.find('span', {'class':'update'}) is not None) and (item.find('a') is not None) ) ]
+	return titlePubdateUrl
+
 def parseNhkPubDate(pubDatetime):
 	""" Processes and returns the database compliant Pub Datetime from the provided NHK Pub Datetime. """
 	pubDateTime, year, month, day, hour, minute, second = (None, None, None, None, None, None, None)
@@ -81,28 +135,11 @@ def parseAsahiPubDate(pubDatetime):
 		print(pubDatetime)
 	return pubDateTime
 
-def getAsahiRssArticles(items):
-	""" Processes the Asahi RSS Page Source into a list of Titles, PubDatetimes, and URLs.
-	A list of News Articles is then formed from the list of News Article information.  """
-	titlePubdateUrl = getAsahiPageArticleTitlePubdateUrl(items)
-	articles = [ newsArticle(title, pubdate, url) \
-		for (title, pubdate, url) in titlePubdateUrl ]
-	return articles
-
-def getNhkRssArticles(items):
-	""" Processes the NHK RSS Page Source into a list of Titles, PubDatetimes, and URLs.
-	A list of News Articles is then formed from the list of News Article information.  """
-	titlePubdateUrl = getNhkPageArticleTitlePubdateUrl(items)
-	articles = [ newsArticle(title, pubdate, url) \
-		for (title, pubdate, url) in titlePubdateUrl ]
-	return articles	
-
-def getAsahiPageArticleTitlePubdateUrl(items):
-	""" Processes the Asahi RSS Page Source list of items into a list of  Titles, PubDatetimes, and URLs for each Asahi News Article. """
-	titlePubdateUrl = [ ( (item.find('title').contents[0]), parseAsahiPubDate(item.find('dc:date').contents[0]), (item.find('link').contents[0]) ) for item in items if( (item.find('title') is not None) and (item.find('link') is not None) and (item.find('dc:date') is not None) ) ]
-	return titlePubdateUrl
-
-def getNhkPageArticleTitlePubdateUrl(items):
-	""" Processes the NHK RSS Page Source list of items into a list of  Titles, PubDatetimes, and URLs for each NHK News Article. """
-	titlePubdateUrl = [ ( (item.find('title').contents[0]), parseNhkPubDate(item.find('pubdate').contents[0]), (item.find('guid').contents[0]) ) for item in items if( (item.find('title') is not None) and (item.find('guid') is not None) and (item.find('pubdate') is not None) ) ]
-	return titlePubdateUrl
+def parseYomiuriPubDate(pubDatetime):
+	""" Processes and returns the database compliant Pub Datetime from the provided Yomiuri Pub Datetime. """
+	#（2015年07月25日）
+	pubDateTime, year, month, day, hour, minute, second = (None, None, None, None, None, None, None)
+	pubInfo = re.split('\D', pubDatetime)
+	year, month, day = (int(pubInfo[1]), int(pubInfo[2]), int(pubInfo[3]))
+	pubDateTime = datetime.datetime(year, month, day)
+	return pubDateTime
