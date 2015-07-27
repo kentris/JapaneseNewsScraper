@@ -48,27 +48,27 @@ def getNewsArticles(db, urlGenreSource):
 	"""	Retrieves all News Articles for the specified News Source URLs.
 
 	Using the provided list of URLs, Genres, and Sources, a list of new News Articles is retrieved.	"""
-
 	logging.debug("Entering getNewsArticles()...")
 	newsArticles = []
 	for (url, genre, source) in urlGenreSource:
-		newNewsArticles = getNewNewsArticles(db, url, genre, source)
+		newNewsArticles = getNewRssArticles(db, url, genre, source)
 		newsArticles.extend(newNewsArticles)
 	logging.debug("Retrieved a total of %d news articles. Exiting getNewsArticles()." % len(newsArticles))
 	print("Retrieved a total of %d news articles." % len(newsArticles))
 	return newsArticles
 
-def getNewNewsArticles(db, url, genre, source):
+def getNewRssArticles(db, url, genre, source):
 	""" Retrieves all New News Articles for the specified News Source URL.
 	
 	Using the provided URL, Genre, and Source, a list of new News Articles is retrieved.  Copies in the database are removed by checking against the database. This is to remove excessive page requests to the website. """
-	logging.debug("Entering getNewNewsArticles(). Retrieving Source: " + source + ", Genre: " + genre + " articles...")
+	logging.debug("Entering getNewRssArticles(). Retrieving Source: " + source + ", Genre: " + genre + " articles...")
 	print("Retrieving Source: " + source + ", Genre: " + genre + " articles...")
 	page = getUrlPage(url)		
-	articles = getPageArticles(page, source)
-	newsArticles = processPageArticles(db, articles, genre, source)
+	getRssArticles = getattr(parser, "get" + source.title() + "RssArticles")
+	articles = getRssArticles(page)
+	newsArticles = processRssArticles(db, articles, genre, source)
 	print("Retrieval complete. %d %s article(s) to process.\n" % (len(newsArticles), source))
-	logging.debug("Exiting getNewNewsArticles(). Retrieval complete. %d %s article(s) to process.\n" % (len(newsArticles), source))
+	logging.debug("Exiting getNewRssArticles(). Retrieval complete. %d %s article(s) to process.\n" % (len(newsArticles), source))
 	return newsArticles
 
 def getUrlPage(url):
@@ -84,18 +84,14 @@ def getUrlPage(url):
 		logging.debug("Unable to read URL: " + url)
 	return page
 
-def getPageArticles(page, source):
-	""" Returns list of articles from specified source and RSS feed. """
-	getRssArticles = getattr(parser, "get" + source.title() + "RssArticles")
-	articles = getRssArticles(page)
-	return articles
-
-def processPageArticles(db, articles, genre, source):
+def processRssArticles(db, articles, genre, source):
 	""" Removes potentially new News Articles that are already in the database. This is to limit which pages we request to process the News Article Body	"""
 	newsArticles = []
 	for article in articles:
 		if notInDatabase(article, db):
-			newsArticles.append( updatePageArticle(article, genre, source) )
+			article.setGenre(genre)
+			article.setSource(source)
+			newsArticles.append( article )
 	return newsArticles
 
 def notInDatabase(article, db):
@@ -103,12 +99,6 @@ def notInDatabase(article, db):
 	db.execute(constants.CHECK_FOR_ARTICLE, article.getCheckTuple())
 	matches = db.fetchall()
 	return not matches
-
-def updatePageArticle(article, genre, source):
-	""" Add the Genre and Source to a newly processed News Article. 	"""
-	article.setGenre(genre)
-	article.setSource(source)
-	return article
 
 def processNewsArticles(conn, db, newsArticles):
 	""" Retrieves the News Articles bodies, and attempts to commit to the database. Keeps track of successes and failures.	"""

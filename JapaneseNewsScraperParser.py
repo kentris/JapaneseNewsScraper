@@ -5,53 +5,7 @@ from bs4 import BeautifulSoup
 import JapaneseNewsScraperConstants as constants
 from JapaneseNewsArticle import newsArticle
 
-def getAsahiNewsArticleBody(page):
-	""" Processes and returns the Asahi News Article Body from the provided News Article page source. """
-	bodyLayout = page.find('div', {"class": "ArticleText"})
-	body = ""
-	for p in bodyLayout.findAll('p'):
-		if p.contents:
-			body+= p.contents[0]
-	body = body.replace("\u3000","")
-	return body
-	
-def getNhkNewsArticleBody(page):
-	""" Processes and returns the Nhk News Article Body from the provided News Article page source. """
-	body = ""
-	newsTextBody = page.find("div", {"id":"news_textbody"})
-	newsTextMore = page.find("div", {"id": "news_textmore"})
-	if newsTextBody and newsTextMore: 
-		body = newsTextBody.contents[0] + newsTextMore.contents[0]
-	# Need to put in extra handling for <div class = "news_add"
-	body = body.replace("<br />", "")
-	return body
-
-def getYomiuriNewsArticleBody(page):
-	""" Processes and returns the Nhk News Article Body from the provided News Article page source. """
-	body = ""
-	articleBodies = page.findAll('p', {'itemprop':'articleBody'})
-	for articleBody in articleBodies:
-		if articleBody.contents:
-			body += articleBody.contents[0]
-	return body
-
-def getAsahiImgUrl(pageText, article):
-	imgUrl = ""
-	newsImageMatch = re.findall(constants.ASAHI_IMAGE_URL_REGEXP, pageText)
-	if newsImageMatch:
-		imgUrl = newsImageMatch[0][2]
-	return imgUrl
-	
-def getNhkImgUrl(pageText, article):
-	imgUrl = ""
-	newsImageMatch = re.findall(constants.NHK_IMAGE_URL_REGEXP, pageText)
-	if newsImageMatch:
-		baseUrl = article.getUrl().rpartition('/')[0]
-		imgUrlExt = newsImageMatch[0][1]
-		if not imgUrlExt[0:4] == "http":
-			imgUrl = baseUrl + '/' + imgUrlExt
-	return imgUrl
-
+################## getRssArticles() ###########################
 def getAsahiRssArticles(page):
 	""" Processes the Asahi RSS Page Source into a list of Titles, PubDatetimes, and URLs.
 	A list of News Articles is then formed from the list of News Article information.  """
@@ -82,6 +36,8 @@ def getYomiuriRssArticles(page):
 		for (title, pubdate, url) in titlePubdateUrl ]
 	return articles	
 
+
+################# getTitlePubdateUrl() ########################
 def getAsahiPageArticleTitlePubdateUrl(items):
 	""" Processes the Asahi RSS Page Source list of items into a list of  Titles, PubDatetimes, and URLs for each Asahi News Article. """
 	titlePubdateUrl = [ ( (item.find('title').contents[0]), parseAsahiPubDate(item.find('dc:date').contents[0]), (item.find('link').contents[0]) ) for item in items if( (item.find('title') is not None) and (item.find('link') is not None) and (item.find('dc:date') is not None) ) ]
@@ -97,6 +53,8 @@ def getYomiuriPageArticleTitlePubdateUrl(items):
 	titlePubdateUrl = [ ( (item.find('span', {'class':'headline'}).contents[0]), parseYomiuriPubDate(item.find('span', {'class':'update'}).contents[0]), (item.find('a')['href']) ) for item in items if( (item.find('span', {'class':'headline'}) is not None) and (item.find('span', {'class':'update'}) is not None) and (item.find('a') is not None) ) ]
 	return titlePubdateUrl
 
+
+################# parsePubDate() #################################
 def parseNhkPubDate(pubDatetime):
 	""" Processes and returns the database compliant Pub Datetime from the provided NHK Pub Datetime. """
 	pubDateTime, year, month, day, hour, minute, second = (None, None, None, None, None, None, None)
@@ -135,6 +93,7 @@ def parseAsahiPubDate(pubDatetime):
 		print(pubDatetime)
 	return pubDateTime
 
+# Needs further validation here; comparable to previous parsePubDate() functions
 def parseYomiuriPubDate(pubDatetime):
 	""" Processes and returns the database compliant Pub Datetime from the provided Yomiuri Pub Datetime. """
 	#（2015年07月25日）
@@ -143,3 +102,54 @@ def parseYomiuriPubDate(pubDatetime):
 	year, month, day = (int(pubInfo[1]), int(pubInfo[2]), int(pubInfo[3]))
 	pubDateTime = datetime.datetime(year, month, day)
 	return pubDateTime
+
+
+################# getNewsArticleBody() ############################
+def getAsahiNewsArticleBody(page):
+	""" Processes and returns the Asahi News Article Body from the provided News Article page source. """
+	bodyLayout = page.find('div', {"class": "ArticleText"})
+	body = ""
+	for p in bodyLayout.findAll('p'):
+		if p.contents:
+			body+= p.contents[0]
+	body = body.replace("\u3000","")
+	return body
+	
+def getNhkNewsArticleBody(page):
+	""" Processes and returns the Nhk News Article Body from the provided News Article page source. """
+	body = ""
+	newsTextBody = page.find("div", {"id":"news_textbody"})
+	newsTextMore = page.find("div", {"id": "news_textmore"})
+	if newsTextBody and newsTextMore: 
+		body = newsTextBody.contents[0] + newsTextMore.contents[0]
+	# Need to put in extra handling for <div class = "news_add"
+	body = body.replace("<br />", "")
+	return body
+
+def getYomiuriNewsArticleBody(page):
+	""" Processes and returns the Nhk News Article Body from the provided News Article page source. """
+	body = ""
+	articleBodies = page.findAll('p', {'itemprop':'articleBody'})
+	for articleBody in articleBodies:
+		if articleBody.contents:
+			body += articleBody.contents[0]
+	return body
+
+
+################# getImgUrl() #####################################
+def getAsahiImgUrl(pageText, article):
+	imgUrl = ""
+	newsImageMatch = re.findall(constants.ASAHI_IMAGE_URL_REGEXP, pageText)
+	if newsImageMatch:
+		imgUrl = newsImageMatch[0][2]
+	return imgUrl
+	
+def getNhkImgUrl(pageText, article):
+	imgUrl = ""
+	newsImageMatch = re.findall(constants.NHK_IMAGE_URL_REGEXP, pageText)
+	if newsImageMatch:
+		baseUrl = article.getUrl().rpartition('/')[0]
+		imgUrlExt = newsImageMatch[0][1]
+		if not imgUrlExt[0:4] == "http":
+			imgUrl = baseUrl + '/' + imgUrlExt
+	return imgUrl
