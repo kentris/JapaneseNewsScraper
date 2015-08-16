@@ -12,9 +12,8 @@ from datetime import date, datetime
 from bs4 import BeautifulSoup
 
 def scrapeNews():
-	""" Main function of the JapaneseNewsScraper. 
+	""" Main function of the JapaneseNewsScraper. Starts logging, establishes database connection, gets news articles form website sources, commits new articles to the database, and then closes the database.	"""
 
-	Starts logging, establishes database connection, gets news articles form website sources, commits new articles to the database, and then closes the database.	"""
 	startLogger()
 	conn, db = createDbConnection(constants.DATABASE_NAME, constants.CREATE_TABLE)
 	newsArticles = getNewsArticles( db, constants.URL_GENRE_SOURCE )
@@ -22,66 +21,65 @@ def scrapeNews():
 	closeDbConnection(db)
 
 def startLogger():
-	"""	Starts the logging of the JapaneseNewsScraper. 
+	"""	Starts the logging of the JapaneseNewsScraper. Creates new text log file based off of the current timestamp. Stores log file in the corresponding Log folder of the application. Sets the writing mode to debugging.	"""
 
-	Creates new text log file based off of the current timestamp. Stores log file in the corresponding Log folder of the application. Sets the writing mode to debugging.	"""
-	ts = time.time()
-	currentTs = datetime.fromtimestamp(ts).strftime('%Y-%m-%d-%H-%M-%S')
+	currentTs = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d_%H-%M-%S')
 	if not os.path.exists(constants.LOG_DIRECTORY):
 		os.makedirs(constants.LOG_DIRECTORY)
-	fileName = "Logs/JapaneseNewsScraper_" + currentTs + ".log" 
-	logging.basicConfig(filename=fileName, filemode = 'w', level=logging.DEBUG)
-	logging.debug("Logging initiated for JapaneseNewsScraper.")
+	fileName = "Logs/JapaneseNewsWebScraper_" + currentTs + ".log" 
+	global logging
+	logging = open(fileName, 'w', encoding='UTF-8')
+	logAndPrintMessage("Logging initiated for JapaneseNewsWebScraper.")
+
+def logAndPrintMessage(message):
+	logging.write(getCurrentTimestamp() + message + '\n')
+	print(getCurrentTimestamp() + message)
 	
+def getCurrentTimestamp():
+	return datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S ')		
+
 def createDbConnection(database, sqlCreateTable):
 	"""  Establishes a database connection to our Japanese News Database. """
-	logging.debug("Entering createDbConnection()...")
-	print("Starting database connection...")
+
+	logAndPrintMessage("Entering createDbConnection()...")
 	conn = sqlite3.connect(database)
 	db = conn.cursor()
 	db.execute(sqlCreateTable)
-	print("Database connection established.\n")
-	logging.debug("Exiting createDbConnection().")
+	logAndPrintMessage("Succesfully created database connection. Exiting createDbConnection().")
 	return (conn, db)
 	
 def getNewsArticles(db, urlGenreSource):
-	"""	Retrieves all News Articles for the specified News Source URLs.
+	"""	Retrieves all News Articles for the specified News Source URLs. Using the provided list of URLs, Genres, and Sources, a list of new News Articles is retrieved.	"""
 
-	Using the provided list of URLs, Genres, and Sources, a list of new News Articles is retrieved.	"""
-	logging.debug("Entering getNewsArticles()...")
+	logAndPrintMessage("Entering getNewsArticles()...")
 	newsArticles = []
 	for (url, genre, source) in urlGenreSource:
 		newNewsArticles = getNewRssArticles(db, url, genre, source)
 		newsArticles.extend(newNewsArticles)
-	logging.debug("Retrieved a total of %d news articles. Exiting getNewsArticles()." % len(newsArticles))
-	print("Retrieved a total of %d news articles." % len(newsArticles))
-	return newsArticles
+	logAndPrintMessage("Retrieved a total of %d news articles. Exiting getNewsArticles()." % len(newsArticles))
+	return set(newsArticles) # This didn't work; need another method to de-dup the list. Maybe do some list comprehension.
 
 def getNewRssArticles(db, url, genre, source):
-	""" Retrieves all New News Articles for the specified News Source URL.
-	
-	Using the provided URL, Genre, and Source, a list of new News Articles is retrieved.  Copies in the database are removed by checking against the database. This is to remove excessive page requests to the website. """
-	logging.debug("Entering getNewRssArticles(). Retrieving Source: " + source + ", Genre: " + genre + " articles...")
-	print("Retrieving Source: " + source + ", Genre: " + genre + " articles...")
+	""" Retrieves all New News Articles for the specified News Source URL. 	Using the provided URL, Genre, and Source, a list of new News Articles is retrieved.  Copies in the database are removed by checking against the database. This is to remove excessive page requests to the website. """
+
+	logAndPrintMessage("Entering getNewRssArticles(). Retrieving Source: " + source + ", Genre: " + genre)
 	page = getUrlPage(url)		
 	getRssArticles = getattr(parser, "get" + source.title() + "RssArticles")
 	articles = getRssArticles(page)
 	newsArticles = processRssArticles(db, articles, genre, source)
-	print("Retrieval complete. %d %s article(s) to process.\n" % (len(newsArticles), source))
-	logging.debug("Exiting getNewRssArticles(). Retrieval complete. %d %s article(s) to process.\n" % (len(newsArticles), source))
+	logAndPrintMessage("Retrieval complete. %d article(s) to process. Exiting getNewRssArticles()." % (len(newsArticles)))
 	return newsArticles
 
 def getUrlPage(url):
 	""" Returns a BeautifulSoup page of the specified URL. 	"""
-	page = []
+
+	page = BeautifulSoup()
 	try:
 		response = urllib.request.urlopen(url)
 		pageText = str(response.read(), 'UTF-8')
 		page = BeautifulSoup(pageText)
 	except urllib.error.URLError:
-		# Add logging later - output to text file
-		print("Unable to read URL: " + url)
-		logging.debug("Unable to read URL: " + url)
+		logAndPrintMessage("Unable to read URL: " + url)
 	return page
 
 def processRssArticles(db, articles, genre, source):
@@ -96,51 +94,49 @@ def processRssArticles(db, articles, genre, source):
 
 def notInDatabase(article, db):
 	""" Checks for the existence of current News Article in the database. 	"""
+
 	db.execute(constants.CHECK_FOR_ARTICLE, article.getCheckTuple())
 	matches = db.fetchall()
 	return not matches
 
 def processNewsArticles(conn, db, newsArticles):
 	""" Retrieves the News Articles bodies, and attempts to commit to the database. Keeps track of successes and failures.	"""
-	successHits, failureHits, totalProcessed = 0, 0, 0
-	for newsArticle in newsArticles:
-		(successHits, failureHits, totalProcessed) = processNewsArticle(conn, db, newsArticle, successHits, failureHits, totalProcessed)
-		print("Processed %d of %d articles..." % (totalProcessed, len(newsArticles)))
-	print("Finished processing News articles. There were %d successful commit(s) and %d failure(s).\n" % (successHits, failureHits))
-	logging.debug("Finished processing News articles. There were %d successful commit(s) and %d failure(s).\n" % (successHits, failureHits))
 
-def processNewsArticle(conn, db, newsArticle, successHits, failureHits, totalProcessed):
+	logAndPrintMessage("Entering processNewsArticles()...")
+	processed = {'total':0, 'success':0, 'failure':0}
+	for newsArticle in newsArticles:
+		processNewsArticle(conn, db, newsArticle, processed)
+		logAndPrintMessage("Processed %d of %d articles..." % (processed['total'], len(newsArticles)))
+	logAndPrintMessage("Finished processing News articles. There were %d successful commit(s) and %d failure(s). Exiting processNewsArticles()." % (processed['success'], processed['failure']))
+
+def processNewsArticle(conn, db, newsArticle, processed):
 	""" Retrieves the News Article body, and attempts to commit to the database. Keeps track of successes and failures. """
-	logging.debug("Entering processNewsArticle()...")
-	totalProcessed += 1
+
+	logAndPrintMessage("Entering processNewsArticle() with %s..." % (newsArticle))
+	processed['total'] += 1
 	try: 
 		newsArticle.setBody( getNewsArticleBody(newsArticle) )
-		# newsArticle.setImgUrl( getNewsArticleImgUrl(newsArticle) ) <- We'll improve this later; not imprtant now.
 		if newsArticle.getBody() == "":
-			failureHits += 1
-			logging.debug("Failed to process the Article Body.")
-			print("Failed to process the Article Body.")
+			processed['failure'] += 1
+			logAndPrintMessage("Failed to process the Article Body.")
 		else:
 			db.execute(constants.INSERT_ARTICLE, newsArticle.getInsertTuple())
 			conn.commit()
-			successHits += 1
+			processed['success'] += 1
 	except sqlite3.IntegrityError:
-		logging.debug("Article already exists in database.")
-		print("Article already exists in database: "+ str(newsArticle))
-		failureHits += 1
+		logAndPrintMessage("Article already exists in database: "+ str(newsArticle))
+		processed['failure'] += 1
 	except urllib.error.HTTPError:
-		logging.debug("Failed to retrieve page for article.")
-		print("Failed to retrieve page for article: "+ str(newsArticle))
-		failureHits += 1
+		logAndPrintMessage("Failed to retrieve page for article: "+ str(newsArticle))
+		processed['failure'] += 1
 	except Exception:
-		logging.debug("Uncaught error occurred.")
-		print("Uncaught error occurred: " + str(newsArticle))
-		print(traceback.format_exc())
-		failureHits += 1
-	return (successHits, failureHits, totalProcessed)
+		logAndPrintMessage("Uncaught error occurred: " + str(newsArticle) +' \n' + traceback.format_exc())
+		processed['failure'] += 1
+	logAndPrintMessage("Exiting processNewsArticle().")
 	
 def getNewsArticleBody(newsArticle):
 	""" Retrieves the News Article body from the News Article's URL.	"""
+
 	page = getUrlPage(newsArticle.getUrl())
 	body = ""
 	retrieveNewsArticleBody = getattr(parser, "get" + newsArticle.getSource().title() + "NewsArticleBody")
@@ -155,11 +151,11 @@ def getNewsArticleImgUrl(newsArticle):
 	
 def closeDbConnection(db):
 	""" Closes the database connection.  """
-	logging.debug("Closing database connections...")
-	print("Closing database connections...")
+
+	logAndPrintMessage("Entering closeDbConnection()...")
 	db.close()
-	logging.debug("Database closed. Exiting program.\n")
-	print("Database closed. Exiting program.\n")
+	logAndPrintMessage("Database closed. Exiting closeDbConnection().")
+	logging.close()
 	
 
 

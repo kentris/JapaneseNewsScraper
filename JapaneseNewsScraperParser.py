@@ -109,9 +109,10 @@ def getAsahiNewsArticleBody(page):
 	""" Processes and returns the Asahi News Article Body from the provided News Article page source. """
 	bodyLayout = page.find('div', {"class": "ArticleText"})
 	body = ""
-	for p in bodyLayout.findAll('p'):
-		if p.contents:
-			body+= p.contents[0]
+	if bodyLayout:
+		for p in bodyLayout.findAll('p'):
+			if p.contents:
+				body+= p.contents[0]
 	body = body.replace("\u3000","")
 	return body
 	
