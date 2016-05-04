@@ -54,8 +54,11 @@ def getNewsArticles(db, urlGenreSource):
 	logAndPrintMessage("Entering getNewsArticles()...")
 	newsArticles = []
 	for (url, genre, source) in urlGenreSource:
-		newNewsArticles = getNewRssArticles(db, url, genre, source)
-		newsArticles.extend(newNewsArticles)
+		try:
+			newNewsArticles = getNewRssArticles(db, url, genre, source)
+			newsArticles.extend(newNewsArticles)
+		except Exception as e:
+			print(e)
 	logAndPrintMessage("Retrieved a total of %d news articles. Exiting getNewsArticles()." % len(newsArticles))
 	return set(newsArticles) # This didn't work; need another method to de-dup the list. Maybe do some list comprehension.
 
@@ -77,7 +80,7 @@ def getUrlPage(url):
 	try:
 		response = urllib.request.urlopen(url)
 		pageText = str(response.read(), 'UTF-8')
-		page = BeautifulSoup(pageText)
+		page = BeautifulSoup(pageText, "lxml")
 	except urllib.error.URLError:
 		logAndPrintMessage("Unable to read URL: " + url)
 	return page

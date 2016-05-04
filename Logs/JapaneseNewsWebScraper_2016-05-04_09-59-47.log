@@ -1,0 +1,19 @@
+2016-05-04 09:59:47 Logging initiated for JapaneseNewsWebScraper.
+2016-05-04 09:59:47 Entering createDbConnection()...
+2016-05-04 09:59:47 Succesfully created database connection. Exiting createDbConnection().
+2016-05-04 09:59:47 Entering getNewsArticles()...
+2016-05-04 09:59:47 Entering getNewRssArticles(). Retrieving Source: NHK, Genre: Society
+2016-05-04 09:59:48 Retrieval complete. 394 article(s) to process. Exiting getNewRssArticles().
+2016-05-04 09:59:48 Entering getNewRssArticles(). Retrieving Source: NHK, Genre: Culture/Entertainment
+2016-05-04 09:59:49 Retrieval complete. 58 article(s) to process. Exiting getNewRssArticles().
+2016-05-04 09:59:49 Entering getNewRssArticles(). Retrieving Source: NHK, Genre: Science/Medicine
+2016-05-04 09:59:50 Retrieval complete. 18 article(s) to process. Exiting getNewRssArticles().
+2016-05-04 09:59:50 Entering getNewRssArticles(). Retrieving Source: NHK, Genre: Politics
+2016-05-04 09:59:51 Retrieval complete. 87 article(s) to process. Exiting getNewRssArticles().
+2016-05-04 09:59:51 Entering getNewRssArticles(). Retrieving Source: NHK, Genre: Economics
+2016-05-04 09:59:52 Retrieval complete. 102 article(s) to process. Exiting getNewRssArticles().
+2016-05-04 09:59:52 Entering getNewRssArticles(). Retrieving Source: NHK, Genre: International
+2016-05-04 09:59:53 Retrieval complete. 171 article(s) to process. Exiting getNewRssArticles().
+2016-05-04 09:59:53 Entering getNewRssArticles(). Retrieving Source: NHK, Genre: Sports
+2016-05-04 09:59:54 Retrieval complete. 100 article(s) to process. Exiting getNewRssArticles().
+2016-05-04 09:59:54 Entering getNewRssArticles(). Retrieving Source: Asahi, Genre: Society
